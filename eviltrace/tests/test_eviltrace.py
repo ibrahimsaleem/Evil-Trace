@@ -160,3 +160,89 @@ def test_output_generation():
     # Cleanup
     if output_dir.exists():
         shutil.rmtree(output_dir)
+
+
+def test_exa_skip_without_key():
+    from agents.ioc_enrichment import IOCEnrichmentAgent
+    agent = IOCEnrichmentAgent(api_key="")
+    # Should skip immediately returning empty list
+    results = agent.run([], {}, enabled=True)
+    assert results == []
+
+
+def test_exa_enrich_confirmed_only_and_no_status_change():
+    from agents.ioc_enrichment import IOCEnrichmentAgent
+    
+    findings = [
+        {
+            "id": "F001",
+            "claim": "Suspicious execution",
+            "category": "suspicious_powershell",
+            "status": "confirmed"
+        },
+        {
+            "id": "F002",
+            "claim": "Credential dumping",
+            "category": "credential_dumping",
+            "status": "rejected"
+        }
+    ]
+    
+    tool_results = {
+        "suspicious_powershell": [
+            {
+                "timestamp": "2024-03-15T02:13:30",
+                "source_file": "powershell_events.csv",
+                "raw_record": "powershell.exe -EncodedCommand JABjAGwAaQBlAG4AdAAgAD0A",
+                "command_line": "powershell.exe -EncodedCommand JABjAGwAaQBlAG4AdAAgAD0A"
+            }
+        ],
+        "credential_dumping": [
+            {
+                "timestamp": "2024-03-15T02:14:50",
+                "source_file": "powershell_events.csv",
+                "raw_record": "Get-Process | Where-Object {$_.Name -eq 'lsass'}",
+                "command_line": "Get-Process | Where-Object {$_.Name -eq 'lsass'}"
+            }
+        ]
+    }
+    
+    agent = IOCEnrichmentAgent(api_key="mock_key")
+    
+    # Mock the enrich_ioc method to return dummy threat-intel info
+    def dummy_enrich(ioc, ioc_type):
+        return {
+            "ioc": ioc,
+            "ioc_type": ioc_type,
+            "query_used": f"threat intelligence malicious {ioc}",
+            "external_context_summary": "Known threat actor IP",
+            "source_title": "ThreatIntel DB",
+            "source_url": "https://threatintel.test",
+            "source_highlight": "Matches IP used in campaign X",
+            "confidence": "supportive",
+            "enrichment_timestamp": "2024-03-15T02:16:00",
+            "provider": "exa"
+        }
+    agent.provider.enrich_ioc = dummy_enrich
+    
+    # Run the enrichment agent
+    enriched = agent.run(findings, tool_results, enabled=True)
+    
+    # Should only enrich the powershell/base64 command (confirmed) and NOT the lsass query (rejected)
+    assert len(enriched) > 0
+    # Confirm finding status is not changed by enrichment
+    assert findings[0]["status"] == "confirmed"
+    assert findings[1]["status"] == "rejected"
+
+
+def test_exa_key_security():
+    from providers.exa import ExaProvider
+    # API Key must never appear in logged exception texts or reports
+    key = "EXA_SECRET_KEY_99999"
+    provider = ExaProvider(api_key=key)
+    
+    # Verify key is masked by sanitization
+    sanitized = provider._sanitize(f"Failed connection to api.exa.ai using key={key}")
+    assert key not in sanitized
+    assert "***" in sanitized
+

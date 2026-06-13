@@ -35,6 +35,7 @@ class ReportWriterAgent:
         timeline: List[Dict[str, Any]],
         evidence_dir: str,
         provider_name: str,
+        enriched_iocs: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, str]:
         t0 = time.monotonic()
         self.progress("[ReportWriter] Generating final report ...")
@@ -56,7 +57,8 @@ class ReportWriterAgent:
         now = datetime.utcnow().isoformat()
         md = self._build_markdown(
             exec_summary, confirmed, weak, rejected,
-            corrections, iocs, tl_summary, evidence_dir, provider_name, now
+            corrections, iocs, tl_summary, evidence_dir, provider_name, now,
+            enriched_iocs=enriched_iocs
         )
 
         report_path = self.output_dir / "report.md"
@@ -78,6 +80,27 @@ class ReportWriterAgent:
         with open(accuracy_path, "w", encoding="utf-8") as f:
             f.write(self._build_accuracy(confirmed, weak, rejected, corrections, len(iocs)))
 
+        results_dict = {
+            "report": str(report_path),
+            "findings": str(findings_path),
+            "timeline": str(timeline_path),
+            "iocs": str(iocs_path),
+            "accuracy": str(accuracy_path),
+        }
+
+        # Write Exa enrichment files if provided
+        if enriched_iocs is not None:
+            enriched_iocs_path = self.output_dir / "enriched_iocs.json"
+            with open(enriched_iocs_path, "w", encoding="utf-8") as f:
+                json.dump(enriched_iocs, f, indent=2, default=str)
+
+            external_context_path = self.output_dir / "external_context.md"
+            with open(external_context_path, "w", encoding="utf-8") as f:
+                f.write(self._build_external_context_markdown(enriched_iocs))
+            
+            results_dict["enriched_iocs"] = str(enriched_iocs_path)
+            results_dict["external_context"] = str(external_context_path)
+
         elapsed = int((time.monotonic() - t0) * 1000)
         self.audit.log(
             self.name, "report_complete",
@@ -88,17 +111,12 @@ class ReportWriterAgent:
         )
 
         self.progress(f"[ReportWriter] Report written to {report_path}")
-        return {
-            "report": str(report_path),
-            "findings": str(findings_path),
-            "timeline": str(timeline_path),
-            "iocs": str(iocs_path),
-            "accuracy": str(accuracy_path),
-        }
+        return results_dict
 
     def _build_markdown(
         self, exec_summary, confirmed, weak, rejected,
-        corrections, iocs, tl_summary, evidence_dir, provider_name, now
+        corrections, iocs, tl_summary, evidence_dir, provider_name, now,
+        enriched_iocs=None
     ) -> str:
         lines = [
             "# EvilTrace AI — Incident Response Report",
@@ -185,6 +203,19 @@ class ReportWriterAgent:
         else:
             lines.append("_No IOCs extracted._\n")
 
+        if enriched_iocs:
+            lines += [
+                "\n---\n",
+                "## External Threat Intel Context\n",
+                "> **External enrichment is informational only. Final incident conclusions are based on verified local forensic evidence.**\n\n",
+                "| IOC | Type | Query Used | External Context | Confidence | Source |",
+                "|-----|------|------------|------------------|------------|--------|"
+            ]
+            for item in enriched_iocs:
+                lines.append(
+                    f"| `{item.get('ioc', '')}` | {item.get('ioc_type', '')} | `{item.get('query_used', '')}` | {item.get('external_context_summary', '')} | {item.get('confidence', '')} | [{item.get('source_title', '') or 'N/A'}]({item.get('source_url', '') or 'N/A'}) |"
+                )
+
         lines += ["\n---\n", "## MITRE ATT&CK Mapping\n",
                   "| Finding | Tactic | Technique | ID | Status |",
                   "|---------|--------|-----------|-----|--------|"]
@@ -250,3 +281,30 @@ This system is designed to be conservative: it would rather reject a true findin
 than confirm a hallucinated one. The self-correction loop and verification gates
 prevent unsupported claims from reaching the final report.
 """
+
+    def _build_external_context_markdown(self, enriched_iocs: List[Dict]) -> str:
+        lines = [
+            "# External Threat Intel Context\n",
+            "> **External enrichment is informational only. Final incident conclusions are based on verified local forensic evidence.**\n",
+            "This file contains enriched external threat intelligence information collected via the Exa Search API for confirmed indicators of compromise (IOCs) identified during the investigation.\n",
+            "---",
+            ""
+        ]
+        
+        for item in enriched_iocs:
+            lines += [
+                f"### IOC: `{item.get('ioc', '')}` ({item.get('ioc_type', '').upper()})",
+                f"- **Query Used:** `{item.get('query_used', '')}`",
+                f"- **Confidence:** {item.get('confidence', '')}",
+                f"- **Provider:** {item.get('provider', '')}",
+                f"- **Enrichment Timestamp:** {item.get('enrichment_timestamp', '')}",
+                f"- **Source Reference:** [{item.get('source_title', 'N/A')}]({item.get('source_url', 'N/A')})",
+                f"- **Intel Highlights:**",
+                f"  > {item.get('source_highlight', 'N/A')}",
+                "",
+                "---",
+                ""
+            ]
+            
+        return "\n".join(lines)
+

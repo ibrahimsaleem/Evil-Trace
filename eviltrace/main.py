@@ -51,6 +51,8 @@ def run_investigation(
     api_key: str = "",
     endpoint: str = "",
     verbose: bool = True,
+    enable_exa: bool = False,
+    exa_key: str = "",
 ) -> dict:
     output_dir = output_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -88,13 +90,19 @@ def run_investigation(
     iocs = extract_iocs(records)
     timeline = build_timeline(records)
 
+    # Exa IOC Enrichment Agent (Optional)
+    from agents.ioc_enrichment import IOCEnrichmentAgent
+    enrichment_agent = IOCEnrichmentAgent(api_key=exa_key, progress_cb=progress)
+    enriched_iocs = enrichment_agent.run(findings, tool_results, enabled=enable_exa)
+
     reporter = ReportWriterAgent(
         provider=provider, audit=audit,
         output_dir=output_dir, progress_cb=progress
     )
     output_files = reporter.run(
         findings, corrections, iocs, timeline,
-        str(evidence_dir), provider.name
+        str(evidence_dir), provider.name,
+        enriched_iocs=enriched_iocs if enable_exa and enrichment_agent.provider.is_available() else None
     )
 
     fallback_reason = getattr(provider, "_fallback_reason", "")
@@ -125,6 +133,7 @@ def run_investigation(
         "timeline": timeline,
         "output_files": output_files,
         "logs": logs,
+        "enriched_iocs": locals().get("enriched_iocs", None),
     }
 
 
@@ -215,6 +224,8 @@ Examples:
     parser.add_argument("--api-key", default="", help="API key (use env var instead for security)")
     parser.add_argument("--endpoint", default="", help="Ollama endpoint URL")
     parser.add_argument("--quiet", action="store_true", help="Suppress progress output")
+    parser.add_argument("--enable-exa", action="store_true", help="Enable Exa IOC threat intelligence enrichment")
+    parser.add_argument("--skip-enrichment", action="store_true", help="Force skip threat intelligence enrichment")
     args = parser.parse_args()
 
     evidence_dir = Path(args.evidence)
@@ -229,6 +240,9 @@ Examples:
     console.print(f"  Evidence: [dim]{evidence_dir}[/dim]")
     console.print(f"  Provider: [dim]{args.provider}[/dim]")
 
+    enable_exa = args.enable_exa and not args.skip_enrichment
+    exa_key = os.environ.get("EXA_API_KEY", "")
+
     result = run_investigation(
         evidence_dir=evidence_dir,
         output_path=output_path,
@@ -237,6 +251,8 @@ Examples:
         api_key=api_key,
         endpoint=args.endpoint,
         verbose=not args.quiet,
+        enable_exa=enable_exa,
+        exa_key=exa_key,
     )
     print_summary(result)
 

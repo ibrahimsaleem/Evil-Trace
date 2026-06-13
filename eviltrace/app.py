@@ -115,6 +115,22 @@ with st.sidebar:
         st.info("Mock Mode — deterministic, no API key required")
 
     st.markdown("---")
+    st.markdown("### Exa IOC Enrichment (Optional)")
+    enable_exa = st.checkbox(
+        "Enable Exa IOC Enrichment",
+        value=False,
+        help="Query Exa Search API for threat-intel context on confirmed IOCs"
+    )
+    exa_key_input = ""
+    if enable_exa:
+        exa_key_input = st.text_input(
+            "Exa API Key", type="password",
+            value=os.environ.get("EXA_API_KEY", ""),
+            help="Or set EXA_API_KEY environment variable",
+            placeholder="exa-..."
+        )
+
+    st.markdown("---")
     st.markdown("### Output")
     output_dir = st.text_input("Output directory", value="outputs")
 
@@ -167,6 +183,8 @@ if run_btn:
             api_key=api_key_input,
             endpoint=ollama_endpoint,
             verbose=False,
+            enable_exa=enable_exa,
+            exa_key=exa_key_input or os.environ.get("EXA_API_KEY", ""),
         )
         st.session_state.results = result
 
@@ -328,6 +346,21 @@ if st.session_state.results:
             )
             filtered = ioc_df[ioc_df["ioc_type"].isin(ioc_type_filter)] if ioc_type_filter else ioc_df
             st.dataframe(filtered[["ioc_type", "value", "severity", "source_file", "timestamp"]], use_container_width=True)
+
+            # Exa Enriched IOCs section
+            enriched_iocs = r.get("enriched_iocs", None)
+            if enriched_iocs:
+                st.markdown("---")
+                st.subheader("🌐 External Threat Intel Context (Exa)")
+                st.warning("External enrichment is informational only. Final incident conclusions are based on verified local forensic evidence.")
+                
+                enriched_df = pd.DataFrame(enriched_iocs)
+                cols_to_show = [
+                    "ioc", "ioc_type", "confidence", "external_context_summary", 
+                    "source_title", "source_url", "source_highlight"
+                ]
+                cols_present = [c for c in cols_to_show if c in enriched_df.columns]
+                st.dataframe(enriched_df[cols_present], use_container_width=True)
         else:
             st.info("No IOCs extracted from evidence.")
 
