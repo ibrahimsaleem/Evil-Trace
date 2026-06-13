@@ -1,0 +1,4 @@
+timestamp,host,user,event_type,command_line,src_ip,dst_ip,process,file_path
+2024-03-15T02:13:30,WORKSTATION-01,CORP\jsmith,4104,powershell.exe -NoP -NonI -W Hidden -EncodedCommand JABjAGwAaQBlAG4AdAAgAD0A,10.0.1.50,,powershell.exe,
+2024-03-15T02:14:50,WORKSTATION-01,CORP\jsmith,4104,Get-Process | Where-Object {$_.Name -eq 'lsass'},10.0.1.50,,powershell.exe,
+2024-03-15T02:15:30,WORKSTATION-01,CORP\jsmith,4104,echo "upload payload",10.0.1.50,,powershell.exe,

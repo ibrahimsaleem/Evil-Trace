@@ -1,0 +1,6 @@
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	proto	service	duration	orig_bytes	resp_bytes	conn_state	local_orig	local_resp	missed_bytes	history	orig_pkts	orig_ip_bytes	resp_pkts	resp_ip_bytes	tunnel_parents
+2024-03-15T02:13:30	C1234	10.0.1.50	49152	203.0.113.88	443	tcp	http	0.1	100	100	SF	-	-	0	ShAdDa	5	250	5	250	-
+2024-03-15T02:14:30	C1235	10.0.1.50	49153	203.0.113.88	443	tcp	http	0.1	100	100	SF	-	-	0	ShAdDa	5	250	5	250	-
+2024-03-15T02:15:30	C1236	10.0.1.50	49154	203.0.113.88	443	tcp	http	0.1	100	100	SF	-	-	0	ShAdDa	5	250	5	250	-
+2024-03-15T02:16:30	C1237	10.0.1.50	49155	203.0.113.88	443	tcp	http	0.1	100	100	SF	-	-	0	ShAdDa	5	250	5	250	-
+2024-03-15T02:17:30	C1238	10.0.1.50	49156	203.0.113.88	443	tcp	http	0.1	100	100	SF	-	-	0	ShAdDa	5	250	5	250	-
