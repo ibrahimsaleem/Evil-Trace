@@ -2,6 +2,16 @@
 
 ## System Architecture
 
+To provide full transparency, rigorous evidence verification, and zero hallucinations, EvilTrace AI employs a structured, multi-agent pipeline. Below are the architectural schematics and data flow diagrams.
+
+### 1. High-Level Multi-Agent Architecture
+![EvilTrace AI Agent Architecture](../assets/agent_architecture.png)
+
+### 2. Step-by-Step Agent Collaboration & Data Flow
+![EvilTrace AI Agent Interaction & Data Flow](../assets/agent_interaction_flow.png)
+
+### 3. Interactive Pipeline Flowchart
+
 ```mermaid
 graph TD
     A[Evidence Folder<br/>Zeek · Sysmon · PowerShell · Auth] --> B[EvidenceCollectorAgent<br/>Multi-format Parser]

@@ -16,9 +16,10 @@ class IOCEnrichmentAgent:
         self,
         findings: List[Dict[str, Any]],
         tool_results: Dict[str, List[Dict]],
-        enabled: bool = True
+        enabled: bool = True,
+        enrich_weak: bool = False
     ) -> List[Dict[str, Any]]:
-        """Filter IOCs of confirmed/weak findings, and enrich them via Exa."""
+        """Filter IOCs of confirmed (and optionally weak) findings, and enrich them via Exa."""
         if not enabled:
             self.progress("[IOCEnrichmentAgent] Exa IOC Enrichment is disabled. Skipping.")
             return []
@@ -27,46 +28,65 @@ class IOCEnrichmentAgent:
             self.progress("[IOCEnrichmentAgent] Exa API key is missing. Skipping enrichment.")
             return []
 
-        self.progress("[IOCEnrichmentAgent] Starting Exa IOC enrichment for confirmed/weak findings...")
+        self.progress(f"[IOCEnrichmentAgent] Starting Exa IOC enrichment (enrich_weak={enrich_weak})...")
 
-        # 1. Identify categories that are confirmed or weak
-        active_categories = set()
+        # 1. Map category to status (confirmed/weak_evidence)
+        category_statuses = {}
         for f in findings:
-            if f.get("status") in ("confirmed", "weak_evidence"):
-                active_categories.add(f.get("category"))
+            status = f.get("status")
+            cat = f.get("category")
+            if status == "confirmed":
+                category_statuses[cat] = "confirmed"
+            elif status == "weak_evidence" and enrich_weak:
+                category_statuses[cat] = "weak_evidence"
 
         # 2. Gather records associated with active findings
-        active_records = []
+        active_records_confirmed = []
+        active_records_weak = []
         seen_rec = set()
-        for cat in active_categories:
+        
+        for cat, status in category_statuses.items():
             for rec in tool_results.get(cat, []):
-                # Unique identifier for record to avoid duplicates
                 rec_id = (rec.get("timestamp"), rec.get("source_file"), rec.get("raw_record", "")[:100])
                 if rec_id not in seen_rec:
                     seen_rec.add(rec_id)
-                    active_records.append(rec)
+                    if status == "confirmed":
+                        active_records_confirmed.append(rec)
+                    else:
+                        active_records_weak.append(rec)
 
-        # 3. Extract IOCs from these active records
-        confirmed_iocs = extract_iocs(active_records)
-        if not confirmed_iocs:
-            self.progress("[IOCEnrichmentAgent] No confirmed IOCs found to enrich.")
+        # 3. Extract IOCs
+        confirmed_iocs = extract_iocs(active_records_confirmed)
+        weak_iocs = extract_iocs(active_records_weak)
+        
+        # Avoid enriching the same IOC twice (e.g. if it appears in both confirmed and weak, prioritize confirmed)
+        confirmed_values = {ioc["value"] for ioc in confirmed_iocs}
+        weak_iocs = [ioc for ioc in weak_iocs if ioc["value"] not in confirmed_values]
+
+        if not confirmed_iocs and not weak_iocs:
+            self.progress("[IOCEnrichmentAgent] No active IOCs found to enrich.")
             return []
 
-        self.progress(f"[IOCEnrichmentAgent] Found {len(confirmed_iocs)} confirmed IOC(s) to enrich.")
+        self.progress(f"[IOCEnrichmentAgent] Found {len(confirmed_iocs)} confirmed IOC(s) and {len(weak_iocs)} weak IOC(s) to enrich.")
         
         enriched_results = []
-        for ioc_item in confirmed_iocs:
-            ioc_val = ioc_item["value"]
-            ioc_type = ioc_item["ioc_type"]
-            self.progress(f"[IOCEnrichmentAgent] Querying Exa for {ioc_type}: {ioc_val} ...")
-            
-            try:
-                enrichment = self.provider.enrich_ioc(ioc_val, ioc_type)
-                enriched_results.append(enrichment)
-            except Exception as e:
-                # Mask key in errors and continue investigation gracefully
-                sanitized_error = self.provider._sanitize(str(e))
-                self.progress(f"[Warning] Failed to enrich IOC {ioc_val}: {sanitized_error}")
+        
+        # Helper to query and construct enrichment dict
+        def enrich_list(ioc_list, status_label):
+            for ioc_item in ioc_list:
+                ioc_val = ioc_item["value"]
+                ioc_type = ioc_item["ioc_type"]
+                self.progress(f"[IOCEnrichmentAgent] Querying Exa for {status_label} {ioc_type}: {ioc_val} ...")
+                try:
+                    enrichment = self.provider.enrich_ioc(ioc_val, ioc_type)
+                    enrichment["finding_status"] = status_label
+                    enriched_results.append(enrichment)
+                except Exception as e:
+                    sanitized_error = self.provider._sanitize(str(e))
+                    self.progress(f"[Warning] Failed to enrich {status_label} IOC {ioc_val}: {sanitized_error}")
+
+        enrich_list(confirmed_iocs, "confirmed")
+        enrich_list(weak_iocs, "weak_evidence")
 
         self.progress(f"[IOCEnrichmentAgent] Enrichment complete. Enriched {len(enriched_results)} IOC(s).")
         return enriched_results

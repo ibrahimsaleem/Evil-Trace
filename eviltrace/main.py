@@ -53,6 +53,7 @@ def run_investigation(
     verbose: bool = True,
     enable_exa: bool = False,
     exa_key: str = "",
+    enrich_weak: bool = False,
 ) -> dict:
     output_dir = output_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -93,7 +94,7 @@ def run_investigation(
     # Exa IOC Enrichment Agent (Optional)
     from agents.ioc_enrichment import IOCEnrichmentAgent
     enrichment_agent = IOCEnrichmentAgent(api_key=exa_key, progress_cb=progress)
-    enriched_iocs = enrichment_agent.run(findings, tool_results, enabled=enable_exa)
+    enriched_iocs = enrichment_agent.run(findings, tool_results, enabled=enable_exa, enrich_weak=enrich_weak)
 
     reporter = ReportWriterAgent(
         provider=provider, audit=audit,
@@ -226,6 +227,7 @@ Examples:
     parser.add_argument("--quiet", action="store_true", help="Suppress progress output")
     parser.add_argument("--enable-exa", action="store_true", help="Enable Exa IOC threat intelligence enrichment")
     parser.add_argument("--skip-enrichment", action="store_true", help="Force skip threat intelligence enrichment")
+    parser.add_argument("--enrich-weak-context", action="store_true", help="Enable Exa threat intelligence enrichment for weak evidence findings")
     args = parser.parse_args()
 
     evidence_dir = Path(args.evidence)
@@ -242,6 +244,7 @@ Examples:
 
     enable_exa = args.enable_exa and not args.skip_enrichment
     exa_key = os.environ.get("EXA_API_KEY", "")
+    enrich_weak = args.enrich_weak_context
 
     result = run_investigation(
         evidence_dir=evidence_dir,
@@ -253,6 +256,7 @@ Examples:
         verbose=not args.quiet,
         enable_exa=enable_exa,
         exa_key=exa_key,
+        enrich_weak=enrich_weak,
     )
     print_summary(result)
 

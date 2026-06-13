@@ -20,25 +20,77 @@ EvilTrace AI is a modular, multi-agent Digital Forensics and Incident Response (
 
 ## 🛠️ System Architecture
 
+To provide full transparency, rigorous evidence verification, and zero hallucinations, EvilTrace AI employs a structured, multi-agent pipeline. Below are the architectural schematics and data flow diagrams.
+
+### 1. High-Level Multi-Agent Architecture
+![EvilTrace AI Agent Architecture](assets/agent_architecture.png)
+
+### 2. Step-by-Step Agent Collaboration & Data Flow
+![EvilTrace AI Agent Interaction & Data Flow](assets/agent_interaction_flow.png)
+
+### 3. Interactive Pipeline Flowchart
+
 ```mermaid
-graph TD
-    A[Forensic Evidence Directory] --> B(Collector Agent)
-    B --> C(Tool Runner Agent)
-    C --> D(Hypothesis Agent)
-    D --> E(Verification Agent)
-    E --> F(Self-Correction Agent)
-    F --> G(IOC Enrichment Agent)
-    G --> H(Report Writer Agent)
-    H --> I[Forensic Report & Audit Logs]
+flowchart TB
+    %% Styling Class Definitions
+    classDef Ingestion fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    classDef Verification fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
+    classDef Intel fill:#042f2e,stroke:#14b8a6,stroke-width:2px,color:#f8fafc;
+    classDef Outputs fill:#1c1917,stroke:#d97706,stroke-width:2px,color:#f8fafc;
+
+    subgraph DataIngestion ["Phase 1: Ingestion & Analysis"]
+        direction LR
+        Ev[Forensic Evidence Directory] -->|Read logs| Col[Collector Agent]
+        Col -->|Parse logs into SQLite| DB[(Local DB)]
+        DB -->|Run rules| TR[Tool Runner Agent]
+    end
+
+    subgraph DecisionReasoning ["Phase 2: Reasoning & Verification"]
+        direction TB
+        TR -->|Detection Hits| Hyp[Hypothesis Agent]
+        Hyp -->|Draft Claims| Ver[Verification Agent]
+        Ver -->|Check Local Evidence| DB
+        Ver -->|Verified Findings| SC[Self-Correction Agent]
+        SC -->|Remove Hallucinations| VerifiedFindings{Verified Findings}
+    end
+
+    subgraph EnrichmentReporting ["Phase 3: Context & Reporting"]
+        direction TB
+        VerifiedFindings -->|Confirmed IOCs| ExaAgent[IOC Enrichment Agent]
+        ExaAgent -->|API Queries| Exa[(Exa Search API)]
+        Exa -->|Intel Context| ExaAgent
+        ExaAgent -->|Enriched IOCs| Rep[Report Writer Agent]
+        VerifiedFindings -->|Local Findings| Rep
+        Rep -->|Compile Outputs| Out[Investigation Outputs]
+    end
+
+    subgraph Deliverables ["Generated Artifacts"]
+        direction LR
+        Out -->|MD Report| Report[report.md]
+        Out -->|Structured JSON| Findings[findings.json]
+        Out -->|JSONL Logs| Audit[audit_log.jsonl]
+        Out -->|Intel JSON/MD| IntelDocs[enriched_iocs.json / external_context.md]
+    end
+
+    %% Apply Classes
+    class Col,DB,TR Ingestion;
+    class Hyp,Ver,SC,VerifiedFindings Verification;
+    class ExaAgent,Exa Intel;
+    class Rep,Out,Report,Findings,Audit,IntelDocs Outputs;
 ```
 
-1. **Evidence Collector:** Scans directories for Windows Sysmon (JSON/CSV), Zeek connection logs (TSV), Linux Auth logs (LOG/TXT), parses, and populates a local evidence database.
-2. **Tool Runner:** Executes deterministic detection rules to locate threat indicators.
-3. **Hypothesis Agent:** Formulates security threat claims using LLM reasoning.
-4. **Verification Agent:** Verifies claims against strict regex, size, and keyword criteria.
-5. **Self-Correction:** Cross-checks claims for consistency and flags hallucinated claims as "rejected".
-6. **IOC Enrichment Agent (Optional):** Enriches confirmed indicators with external threat intelligence from Exa.
-7. **Report Writer:** Outputs structured results into 8 markdown, CSV, and JSON deliverables.
+### 1. Ingestion & Analysis (Phase 1)
+* **Evidence Collector Agent:** Recursively crawls and ingests log files, dynamically identifying formats (Sysmon JSON/CSV, Zeek connection TSV, Linux Auth logs). Ingested events are normalized and written to a unified SQLite database.
+* **Tool Runner Agent:** Performs high-speed rule-based matching over database tables to generate detection markers (PowerShell obfuscation, large data transfers, beaconing, etc.).
+
+### 2. Reasoning & Verification (Phase 2)
+* **Hypothesis Agent:** Interprets detection hits to draft structured security claims and tactics.
+* **Verification Agent:** Serves as a strict evidence gate, verifying claims against local forensic records (e.g. validating Mimikatz usage, comsvcs dump patterns, or transfer volumes) and demoting unverified assertions.
+* **Self-Correction Agent:** A sanity check loop that runs verification rules and demotes/corrects LLM hallucinations, ensuring all final report conclusions are backed by verified evidence.
+
+### 3. Threat-Intel Context & Reporting (Phase 3)
+* **IOC Enrichment Agent (Optional):** Extracts confirmed indicators of compromise (IOCs) and retrieves context from the Exa Search API, separating unverified weak indicators from confirmed findings.
+* **Report Writer Agent:** Assembles final reports, timelines, and audit logs, generating clean findings summaries.
 
 ---
 

@@ -122,12 +122,18 @@ with st.sidebar:
         help="Query Exa Search API for threat-intel context on confirmed IOCs"
     )
     exa_key_input = ""
+    enrich_weak = False
     if enable_exa:
         exa_key_input = st.text_input(
             "Exa API Key", type="password",
             value=os.environ.get("EXA_API_KEY", ""),
             help="Or set EXA_API_KEY environment variable",
             placeholder="exa-..."
+        )
+        enrich_weak = st.checkbox(
+            "Enrich Weak Evidence Context",
+            value=False,
+            help="Query Exa Search API for IOCs in weak evidence findings as well"
         )
 
     st.markdown("---")
@@ -185,6 +191,7 @@ if run_btn:
             verbose=False,
             enable_exa=enable_exa,
             exa_key=exa_key_input or os.environ.get("EXA_API_KEY", ""),
+            enrich_weak=enrich_weak,
         )
         st.session_state.results = result
 

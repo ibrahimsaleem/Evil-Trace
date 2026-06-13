@@ -185,6 +185,12 @@ def test_exa_enrich_confirmed_only_and_no_status_change():
             "claim": "Credential dumping",
             "category": "credential_dumping",
             "status": "rejected"
+        },
+        {
+            "id": "F003",
+            "claim": "Weak Exfiltration",
+            "category": "exfiltration_indicators",
+            "status": "weak_evidence"
         }
     ]
     
@@ -203,6 +209,14 @@ def test_exa_enrich_confirmed_only_and_no_status_change():
                 "source_file": "powershell_events.csv",
                 "raw_record": "Get-Process | Where-Object {$_.Name -eq 'lsass'}",
                 "command_line": "Get-Process | Where-Object {$_.Name -eq 'lsass'}"
+            }
+        ],
+        "exfiltration_indicators": [
+            {
+                "timestamp": "2024-03-15T02:15:10",
+                "source_file": "powershell_events.csv",
+                "raw_record": "upload test.zip to 198.51.100.22",
+                "command_line": "upload test.zip to 198.51.100.22"
             }
         ]
     }
@@ -225,14 +239,25 @@ def test_exa_enrich_confirmed_only_and_no_status_change():
         }
     agent.provider.enrich_ioc = dummy_enrich
     
-    # Run the enrichment agent
-    enriched = agent.run(findings, tool_results, enabled=True)
+    # 1. By default, should only enrich confirmed findings, ignoring weak and rejected findings
+    enriched_default = agent.run(findings, tool_results, enabled=True, enrich_weak=False)
     
-    # Should only enrich the powershell/base64 command (confirmed) and NOT the lsass query (rejected)
-    assert len(enriched) > 0
+    # Assert we only got one item (since F001 is confirmed, F002 is rejected, F003 is weak)
+    assert len(enriched_default) == 1
+    assert enriched_default[0]["finding_status"] == "confirmed"
+    
+    # 2. With enrich_weak=True, should enrich both confirmed and weak findings
+    enriched_with_weak = agent.run(findings, tool_results, enabled=True, enrich_weak=True)
+    assert len(enriched_with_weak) == 2
+    
+    statuses = [item["finding_status"] for item in enriched_with_weak]
+    assert "confirmed" in statuses
+    assert "weak_evidence" in statuses
+    
     # Confirm finding status is not changed by enrichment
     assert findings[0]["status"] == "confirmed"
     assert findings[1]["status"] == "rejected"
+    assert findings[2]["status"] == "weak_evidence"
 
 
 def test_exa_key_security():

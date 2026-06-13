@@ -129,12 +129,14 @@ class ReportWriterAgent:
             "## Executive Summary\n",
             exec_summary,
             "\n---\n",
-            "## Confirmed Findings\n",
+            "## 1. Confirmed Local Evidence\n",
+            "### Confirmed Findings\n"
         ]
+        
         if confirmed:
             for f in confirmed:
                 lines += [
-                    f"### [{f.get('mitre_technique_id','')}] {f['claim']}",
+                    f"#### [{f.get('mitre_technique_id','')}] {f['claim']}",
                     f"- **Status:** ✅ Confirmed",
                     f"- **Severity:** {f.get('severity','').upper()}",
                     f"- **Confidence:** {f.get('confidence',0):.0%}",
@@ -149,12 +151,59 @@ class ReportWriterAgent:
         else:
             lines.append("_No confirmed findings._\n")
 
-        lines += ["\n---\n", "## Weak Evidence Findings\n"]
+        lines += ["\n### Local Indicators of Compromise (IOCs)\n"]
+        if iocs:
+            lines.append("| Type | Value | Severity | Source |")
+            lines.append("|------|-------|----------|--------|")
+            for ioc in iocs[:50]:
+                lines.append(
+                    f"| {ioc.get('ioc_type','')} | `{ioc.get('value','')[:60]}` | {ioc.get('severity','')} | {ioc.get('source_file','')[-40:]} |"
+                )
+        else:
+            lines.append("_No IOCs extracted._\n")
+
+        lines += ["\n---\n", "## 2. External Threat Intel Context\n"]
+        
+        confirmed_enriched = [item for item in (enriched_iocs or []) if item.get("finding_status") == "confirmed"]
+        weak_enriched = [item for item in (enriched_iocs or []) if item.get("finding_status") == "weak_evidence"]
+        
+        if enriched_iocs:
+            lines += [
+                "> **External enrichment is informational only. Final incident conclusions are based on verified local forensic evidence.**\n\n",
+                "### Confirmed IOC Threat Intel\n"
+            ]
+            if confirmed_enriched:
+                lines += [
+                    "| IOC | Type | Query Used | External Context | Confidence | Source |",
+                    "|-----|------|------------|------------------|------------|--------|"
+                ]
+                for item in confirmed_enriched:
+                    lines.append(
+                        f"| `{item.get('ioc', '')}` | {item.get('ioc_type', '')} | `{item.get('query_used', '')}` | {item.get('external_context_summary', '')} | {item.get('confidence', '')} | [{item.get('source_title', '') or 'N/A'}]({item.get('source_url', '') or 'N/A'}) |"
+                    )
+            else:
+                lines.append("_No confirmed IOC enrichment records._\n")
+
+            if weak_enriched:
+                lines += [
+                    "\n### Weak Finding IOC Threat Intel\n",
+                    "> **Unverified external context — not used for incident confirmation.**\n\n",
+                    "| IOC | Type | Query Used | External Context | Confidence | Source |",
+                    "|-----|------|------------|------------------|------------|--------|"
+                ]
+                for item in weak_enriched:
+                    lines.append(
+                        f"| `{item.get('ioc', '')}` | {item.get('ioc_type', '')} | `{item.get('query_used', '')}` | {item.get('external_context_summary', '')} | {item.get('confidence', '')} | [{item.get('source_title', '') or 'N/A'}]({item.get('source_url', '') or 'N/A'}) |"
+                    )
+        else:
+            lines.append("_External enrichment was skipped or not enabled._\n")
+
+        lines += ["\n---\n", "## 3. Rejected and Weak Hypotheses\n"]
+        lines += ["### Weak Evidence Findings\n"]
         if weak:
             for f in weak:
                 lines += [
-                    f"### {f['claim']}",
-                    f"- **Status:** ⚠️ Weak Evidence",
+                    f"#### {f['claim']}",
                     f"- **Severity:** {f.get('severity','').upper()}",
                     f"- **Confidence:** {f.get('confidence',0):.0%}",
                     f"- **MITRE:** {f.get('mitre_technique_id','')} — {f.get('mitre_technique','')}",
@@ -164,13 +213,12 @@ class ReportWriterAgent:
         else:
             lines.append("_None._\n")
 
-        lines += ["\n---\n", "## Rejected Hypotheses\n",
+        lines += ["\n### Rejected Hypotheses\n",
                   "> These hypotheses were evaluated but rejected due to insufficient evidence.\n"]
         if rejected:
             for f in rejected:
                 lines += [
-                    f"### ~~{f['claim']}~~",
-                    f"- **Status:** ❌ Rejected",
+                    f"#### ~~{f['claim']}~~",
                     f"- **Reason:** {f.get('reasoning','')[:300]}",
                     f"- **Confidence:** {f.get('confidence',0):.0%}",
                     "",
@@ -178,7 +226,7 @@ class ReportWriterAgent:
         else:
             lines.append("_No rejected hypotheses._\n")
 
-        lines += ["\n---\n", "## Self-Correction Log\n"]
+        lines += ["\n### Self-Correction Log\n"]
         if corrections:
             for c in corrections:
                 lines.append(f"**Finding:** {c['finding_claim']}")
@@ -191,30 +239,6 @@ class ReportWriterAgent:
                     ]
         else:
             lines.append("_No self-corrections required. All claims are supported by evidence._\n")
-
-        lines += ["\n---\n", "## Indicators of Compromise (IOCs)\n"]
-        if iocs:
-            lines.append("| Type | Value | Severity | Source |")
-            lines.append("|------|-------|----------|--------|")
-            for ioc in iocs[:50]:
-                lines.append(
-                    f"| {ioc.get('ioc_type','')} | `{ioc.get('value','')[:60]}` | {ioc.get('severity','')} | {ioc.get('source_file','')[-40:]} |"
-                )
-        else:
-            lines.append("_No IOCs extracted._\n")
-
-        if enriched_iocs:
-            lines += [
-                "\n---\n",
-                "## External Threat Intel Context\n",
-                "> **External enrichment is informational only. Final incident conclusions are based on verified local forensic evidence.**\n\n",
-                "| IOC | Type | Query Used | External Context | Confidence | Source |",
-                "|-----|------|------------|------------------|------------|--------|"
-            ]
-            for item in enriched_iocs:
-                lines.append(
-                    f"| `{item.get('ioc', '')}` | {item.get('ioc_type', '')} | `{item.get('query_used', '')}` | {item.get('external_context_summary', '')} | {item.get('confidence', '')} | [{item.get('source_title', '') or 'N/A'}]({item.get('source_url', '') or 'N/A'}) |"
-                )
 
         lines += ["\n---\n", "## MITRE ATT&CK Mapping\n",
                   "| Finding | Tactic | Technique | ID | Status |",
@@ -291,20 +315,45 @@ prevent unsupported claims from reaching the final report.
             ""
         ]
         
-        for item in enriched_iocs:
+        confirmed_enriched = [item for item in enriched_iocs if item.get("finding_status") == "confirmed"]
+        weak_enriched = [item for item in enriched_iocs if item.get("finding_status") == "weak_evidence"]
+
+        if confirmed_enriched:
+            lines += ["## Confirmed Findings Intel Context\n"]
+            for item in confirmed_enriched:
+                lines += [
+                    f"### IOC: `{item.get('ioc', '')}` ({item.get('ioc_type', '').upper()})",
+                    f"- **Query Used:** `{item.get('query_used', '')}`",
+                    f"- **Confidence:** {item.get('confidence', '')}",
+                    f"- **Provider:** {item.get('provider', '')}",
+                    f"- **Enrichment Timestamp:** {item.get('enrichment_timestamp', '')}",
+                    f"- **Source Reference:** [{item.get('source_title', 'N/A')}]({item.get('source_url', 'N/A')})",
+                    f"- **Intel Highlights:**",
+                    f"  > {item.get('source_highlight', 'N/A')}",
+                    "",
+                    "---",
+                    ""
+                ]
+
+        if weak_enriched:
             lines += [
-                f"### IOC: `{item.get('ioc', '')}` ({item.get('ioc_type', '').upper()})",
-                f"- **Query Used:** `{item.get('query_used', '')}`",
-                f"- **Confidence:** {item.get('confidence', '')}",
-                f"- **Provider:** {item.get('provider', '')}",
-                f"- **Enrichment Timestamp:** {item.get('enrichment_timestamp', '')}",
-                f"- **Source Reference:** [{item.get('source_title', 'N/A')}]({item.get('source_url', 'N/A')})",
-                f"- **Intel Highlights:**",
-                f"  > {item.get('source_highlight', 'N/A')}",
-                "",
-                "---",
-                ""
+                "## Weak Findings Intel Context\n",
+                "> **Unverified external context — not used for incident confirmation.**\n\n"
             ]
+            for item in weak_enriched:
+                lines += [
+                    f"### IOC: `{item.get('ioc', '')}` ({item.get('ioc_type', '').upper()})",
+                    f"- **Query Used:** `{item.get('query_used', '')}`",
+                    f"- **Confidence:** {item.get('confidence', '')}",
+                    f"- **Provider:** {item.get('provider', '')}",
+                    f"- **Enrichment Timestamp:** {item.get('enrichment_timestamp', '')}",
+                    f"- **Source Reference:** [{item.get('source_title', 'N/A')}]({item.get('source_url', 'N/A')})",
+                    f"- **Intel Highlights:**",
+                    f"  > {item.get('source_highlight', 'N/A')}",
+                    "",
+                    "---",
+                    ""
+                ]
             
         return "\n".join(lines)
 
